@@ -84,7 +84,7 @@ public struct OpenAIClient {
     }
 
 
-    public func chatNew<T: Codable>(requestBody: T) async throws -> Data {
+    public func chatNew(messages: [Components.Schemas.ChatCompletionRequestMessage], properties: Properties) async throws -> String {
         let urlString = "https://chat.fitmentalhelp.com/generate_response"
         guard let url = URL(string: urlString) else {
             throw APIError.invalidURL
@@ -94,6 +94,7 @@ public struct OpenAIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
+        let requestBody = ChatNewRequestBody(messages: messages, properties: properties)
         let jsonData = try JSONEncoder().encode(requestBody)
         request.httpBody = jsonData
         
@@ -103,8 +104,10 @@ public struct OpenAIClient {
             throw APIError.invalidResponse
         }
         
-        return data
+        let decodedResponse = try JSONDecoder().decode(ChatNewResponse.self, from: data)
+        return decodedResponse.content
     }
+
 
     
     public func oldPromptChatGPT(
