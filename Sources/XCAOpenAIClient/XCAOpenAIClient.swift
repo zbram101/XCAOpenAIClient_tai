@@ -1,6 +1,48 @@
 import Foundation
+import OpenAPIKit30
+import OpenAPIKit
 import OpenAPIRuntime
 import OpenAPIURLSession
+
+
+struct Properties: Codable {
+    let user_id: String
+    let convo_id: String
+    let conv_state: ConvoState
+}
+struct ConvoState: Codable {
+    var sessionType: String
+    var problems: [String]
+    var rootCauseId: Bool
+    var phase: String
+    var solutionType: String
+    var selfHarmFlag: Int
+    var previousPhase: String?
+    var phaseLog: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case sessionType
+        case problems
+        case rootCauseId  
+        case phase
+        case solutionType
+        case selfHarmFlag  
+        case previousPhase 
+        case phaseLog 
+    }
+
+
+    init() {
+        sessionType = "standard"
+        problems = []
+        rootCauseId = false
+        phase = "BEGINNING"
+        solutionType = "unknown"
+        selfHarmFlag = 0
+        previousPhase = nil
+        phaseLog = ["BEGINNING"]
+    }
+}
 
 public struct OpenAIClient {
     
@@ -18,10 +60,61 @@ public struct OpenAIClient {
     
     
     public func promptChatGPT(
+        properties: Properties,
+        messages: [Components.Schemas.ChatCompletionRequestMessage] = []) async throws -> String {
+
+        // let response = try await client.createChatCompletion(body: .json(.init(
+        //     messages: [.ChatCompletionRequestAssistantMessage(.init(content: assistantPrompt, role: .assistant))]
+        //     + prevMessages
+        //     + [.ChatCompletionRequestUserMessage(.init(content: .case1(prompt), role: .user))],
+        //     model: .init(value1: nil, value2: model))))
+        
+        let response = try await chatNew(requestBody: .init(messages: messages, properties: properties))
+
+
+        switch response {
+        case .ok(let body):
+            let json = try body.body.json
+            guard let content = json.choices.first?.message.content else {
+                throw "No Response"
+            }
+            return content
+        case .undocumented(let statusCode, let payload):
+            throw "OpenAIClientError - statuscode: \(statusCode), \(payload)"
+        }
+        
+    }
+
+
+    public func chatNew<T: Codable>(requestBody: T) async throws -> Data {
+        let urlString = "https://chat.fitmentalhelp.com/generate_response"
+        guard let url = URL(string: urlString) else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let jsonData = try JSONEncoder().encode(requestBody)
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse, 200...299 ~= httpResponse.statusCode else {
+            throw APIError.invalidResponse
+        }
+        
+        return data
+    }
+
+    
+    public func oldPromptChatGPT(
         prompt: String,
         model: Components.Schemas.CreateChatCompletionRequest.modelPayload.Value2Payload = .gpt_hyphen_4,
         assistantPrompt: String = "You are a helpful assistant",
         prevMessages: [Components.Schemas.ChatCompletionRequestMessage] = []) async throws -> String {
+
         let response = try await client.createChatCompletion(body: .json(.init(
             messages: [.ChatCompletionRequestAssistantMessage(.init(content: assistantPrompt, role: .assistant))]
             + prevMessages
@@ -40,6 +133,7 @@ public struct OpenAIClient {
         }
         
     }
+
     
     public func generateSpeechFrom(input: String,
                                    model: Components.Schemas.CreateSpeechRequest.modelPayload.Value2Payload = .tts_hyphen_1,
