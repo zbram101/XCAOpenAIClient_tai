@@ -3,12 +3,12 @@ import OpenAPIRuntime
 import OpenAPIURLSession
 
 
-struct Properties: Codable {
+public struct Properties: Codable {
     let user_id: String
     let convo_id: String
     let conv_state: ConvoState
 }
-struct ConvoState: Codable {
+public struct ConvoState: Codable {
     var sessionType: String
     var problems: [String]
     var rootCauseId: Bool
@@ -42,6 +42,25 @@ struct ConvoState: Codable {
     }
 }
 
+// Add this struct to define the request body
+public struct ChatNewRequestBody: Codable {
+    let messages: [Components.Schemas.ChatCompletionRequestMessage]
+    let properties: Properties
+}
+
+// Add this enum to define API errors
+public enum APIError: Error {
+    case invalidURL
+    case invalidResponse
+}
+
+
+// Add this struct to define the response
+public struct ChatNewResponse: Codable {
+    let content: String
+}
+extension String: Error {}
+
 public struct OpenAIClient {
     
     public let client: Client
@@ -67,24 +86,19 @@ public struct OpenAIClient {
         //     + [.ChatCompletionRequestUserMessage(.init(content: .case1(prompt), role: .user))],
         //     model: .init(value1: nil, value2: model))))
         
-        let response = try await chatNew(requestBody: .init(messages: messages, properties: properties))
-
-
-        switch response {
-        case .ok(let body):
-            let json = try body.body.json
-            guard let content = json.choices.first?.message.content else {
-                throw "No Response"
-            }
+        let requestBody = ChatNewRequestBody(messages: messages, properties: properties)
+    
+        do {
+            let content = try await chatNew(requestBody: requestBody)
             return content
-        case .undocumented(let statusCode, let payload):
-            throw "OpenAIClientError - statuscode: \(statusCode), \(payload)"
+        } catch {
+            throw "OpenAIClientError: \(error.localizedDescription)"
         }
         
     }
 
 
-    public func chatNew(messages: [Components.Schemas.ChatCompletionRequestMessage], properties: Properties) async throws -> String {
+    public func chatNew(requestBody: ChatNewRequestBody) async throws -> String {
         let urlString = "https://chat.fitmentalhelp.com/generate_response"
         guard let url = URL(string: urlString) else {
             throw APIError.invalidURL
@@ -94,7 +108,6 @@ public struct OpenAIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let requestBody = ChatNewRequestBody(messages: messages, properties: properties)
         let jsonData = try JSONEncoder().encode(requestBody)
         request.httpBody = jsonData
         
