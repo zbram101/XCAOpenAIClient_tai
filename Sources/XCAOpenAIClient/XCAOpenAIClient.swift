@@ -87,7 +87,6 @@ public struct OpenAIClient {
             throw "OpenAIClientError: \(error.localizedDescription)"
         }
     }
-
     public func chatNew(messages: [[String: Any]], properties: [String: Any]) async throws -> String {
         let urlString = "https://chat.fitmentalhelp.com/generate_response"
         guard let url = URL(string: urlString) else {
@@ -98,7 +97,15 @@ public struct OpenAIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let requestBody: [String: Any] = ["messages": messages, "properties": properties]
+        // Convert the properties dictionary to a JSON-compatible format
+        let jsonCompatibleProperties = properties.mapValues { value -> Any in
+            if let value = value as? NSObject {
+                return value
+            }
+            return String(describing: value)
+        }
+        
+        let requestBody: [String: Any] = ["messages": messages, "properties": jsonCompatibleProperties]
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
         request.httpBody = jsonData
         
@@ -115,7 +122,6 @@ public struct OpenAIClient {
         
         return content
     }
-
 
     
     public func oldPromptChatGPT(
