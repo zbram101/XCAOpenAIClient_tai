@@ -76,29 +76,19 @@ public struct OpenAIClient {
     }
     
     
-    public func promptChatGPT(
-        properties: Properties,
-        messages: [Components.Schemas.ChatCompletionRequestMessage] = []) async throws -> String {
+ public func promptChatGPT(
+        properties: [String: Any],
+        messages: [[String: Any]] = []) async throws -> String {
 
-        // let response = try await client.createChatCompletion(body: .json(.init(
-        //     messages: [.ChatCompletionRequestAssistantMessage(.init(content: assistantPrompt, role: .assistant))]
-        //     + prevMessages
-        //     + [.ChatCompletionRequestUserMessage(.init(content: .case1(prompt), role: .user))],
-        //     model: .init(value1: nil, value2: model))))
-        
-        let requestBody = ChatNewRequestBody(messages: messages, properties: properties)
-    
         do {
-            let content = try await chatNew(requestBody: requestBody)
+            let content = try await chatNew(messages: messages, properties: properties)
             return content
         } catch {
             throw "OpenAIClientError: \(error.localizedDescription)"
         }
-        
     }
 
-
-    public func chatNew(requestBody: ChatNewRequestBody) async throws -> String {
+    public func chatNew(messages: [[String: Any]], properties: [String: Any]) async throws -> String {
         let urlString = "https://chat.fitmentalhelp.com/generate_response"
         guard let url = URL(string: urlString) else {
             throw APIError.invalidURL
@@ -108,7 +98,8 @@ public struct OpenAIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let jsonData = try JSONEncoder().encode(requestBody)
+        let requestBody: [String: Any] = ["messages": messages, "properties": properties]
+        let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
         request.httpBody = jsonData
         
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -117,8 +108,12 @@ public struct OpenAIClient {
             throw APIError.invalidResponse
         }
         
-        let decodedResponse = try JSONDecoder().decode(ChatNewResponse.self, from: data)
-        return decodedResponse.content
+        guard let jsonResult = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = jsonResult["content"] as? String else {
+            throw APIError.invalidResponse
+        }
+        
+        return content
     }
 
 
