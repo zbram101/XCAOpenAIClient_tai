@@ -1,6 +1,4 @@
 import Foundation
-import OpenAPIKit30
-import OpenAPIKit
 import OpenAPIRuntime
 import OpenAPIURLSession
 
