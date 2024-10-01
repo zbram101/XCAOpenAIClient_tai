@@ -2,6 +2,12 @@ import Foundation
 import OpenAPIRuntime
 import OpenAPIURLSession
 
+public struct ChatNewResponse: Codable {
+    let content: String
+    let status: String?
+    let new_state: ConvoState?
+}
+
 
 public struct Properties: Codable {
     let user_id: String
@@ -76,7 +82,7 @@ public struct OpenAIClient {
     }
     
     
- public func promptChatGPT(
+    public func promptChatGPT(
         properties: [String: Any],
         messages: [[String: Any]] = []) async throws -> String {
 
@@ -87,7 +93,8 @@ public struct OpenAIClient {
             throw "OpenAIClientError: \(error.localizedDescription)"
         }
     }
-    public func chatNew(messages: [[String: Any]], properties: [String: Any]) async throws -> String {
+
+    public func chatNew(messages: [[String: Any]], properties: [String: Any]) async throws -> ChatNewResponse {
         let urlString = "https://chat.fitmentalhelp.com/generate_response"
         guard let url = URL(string: urlString) else {
             throw APIError.invalidURL
@@ -115,12 +122,13 @@ public struct OpenAIClient {
             throw APIError.invalidResponse
         }
         
-        guard let jsonResult = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = jsonResult["content"] as? String else {
+        do {
+            let decoder = JSONDecoder()
+            let chatResponse = try decoder.decode(ChatNewResponse.self, from: data)
+            return chatResponse
+        } catch {
             throw APIError.invalidResponse
         }
-        
-        return content
     }
 
     
