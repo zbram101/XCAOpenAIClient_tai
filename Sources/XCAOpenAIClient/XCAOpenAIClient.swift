@@ -80,7 +80,7 @@ public struct OpenAIClient {
     
     public func promptChatGPT(
         properties: [String: Any],
-        messages: [[String: Any]] = []) async throws -> String {
+        messages: [[String: Any]] = []) async throws -> ChatNewResponse {
 
         do {
             let content = try await chatNew(messages: messages, properties: properties)
