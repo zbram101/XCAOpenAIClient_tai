@@ -61,10 +61,6 @@ public enum APIError: Error {
 }
 
 
-// Add this struct to define the response
-public struct ChatNewResponse: Codable {
-    let content: String
-}
 extension String: Error {}
 
 public struct OpenAIClient {
