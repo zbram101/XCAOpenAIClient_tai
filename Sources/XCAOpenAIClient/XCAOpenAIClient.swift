@@ -105,7 +105,7 @@ public struct OpenAIClient {
             return String(describing: value)
         }
         
-        let requestBody: [String: Any] = ["messages": messages, "properties": jsonCompatibleProperties]
+        let requestBody: [String: Any] = ["messages": messages, "properties": jsonCompatibleProperties, "stream": false]
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
         request.httpBody = jsonData
         
