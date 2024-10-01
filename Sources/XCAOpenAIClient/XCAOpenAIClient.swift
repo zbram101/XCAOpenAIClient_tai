@@ -80,7 +80,7 @@ public struct OpenAIClient {
     
     public func promptChatGPT(
         properties: [String: Any],
-        messages: [[String: Any]] = []) async throws -> ChatNewResponse {
+        messages: [[String: Any]] = []) async throws ->  [String: Any]  {
 
         do {
             let content = try await chatNew(messages: messages, properties: properties)
@@ -89,8 +89,7 @@ public struct OpenAIClient {
             throw "OpenAIClientError: \(error.localizedDescription)"
         }
     }
-
-    public func chatNew(messages: [[String: Any]], properties: [String: Any]) async throws -> ChatNewResponse {
+    public func chatNew(messages: [[String: Any]], properties: [String: Any]) async throws -> [String: Any] {
         let urlString = "https://chat.fitmentalhelp.com/generate_response"
         guard let url = URL(string: urlString) else {
             throw APIError.invalidURL
@@ -119,9 +118,10 @@ public struct OpenAIClient {
         }
         
         do {
-            let decoder = JSONDecoder()
-            let chatResponse = try decoder.decode(ChatNewResponse.self, from: data)
-            return chatResponse
+            guard let jsonResult = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+                throw APIError.invalidResponse
+            }
+            return jsonResult
         } catch {
             throw APIError.invalidResponse
         }
